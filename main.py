@@ -2,6 +2,7 @@ import os
 import os.path
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from sys import argv
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -68,10 +69,37 @@ def Folder(service, folder):
     folder_id = create_or_get_folder(service, "Backup_2024")
     upload_files_in_folder(service, folder, folder_id)
 
-def starter_code():
-    folder = input("Enter the path of the folder you want to backup: ")
-    service = Basic_configuration()
-    Folder(service, folder)
+# Storage Info
+def Storage_Info(service):
+    about = service.about().get(fields="storageQuota").execute()
+    S_limit=int(about["storageQuota"]["limit"])/(1024**3)
+    S_used=int(about["storageQuota"]["usage"])/(1024**3)
+    Drive_use=int(about["storageQuota"]["usageInDrive"])/(1024**3)
+    Drive_trash=int(about["storageQuota"]["usageInDriveTrash"])/(1024**3)
+    print(f"Storage Limit: {S_limit:.2f}GB")   
+    print(f"Storage Usage: {S_used:2f}GB")   
+    print(f"Storage Usage in Drive: {Drive_use:2f}")   
+    print(f"Storage Usage in Trash: {Drive_trash:2f}")
 
+
+def starter_code():
+    service = Basic_configuration()
+    if len(argv)!=1:
+        if os.path.isdir(argv[1]):#Get Folders from command line
+            for folder in range(1,len(argv)):
+                print(f"Checking Path: {argv[folder]}\n")
+                Folder(service,argv[folder])
+        else:#File containing folder paths
+            with open(argv[1],'r') as paths:
+                for folder in paths.readlines():
+                    print(f"Checking Path: {folder}\n")
+                    folder=folder.strip("\n")
+                    Folder(service,folder)
+    else:
+        folder=input("Enter Path of folder:")
+        Folder(service,folder)
+    Storage_Info(service)
+
+    
 if __name__ == "__main__":
     starter_code()
