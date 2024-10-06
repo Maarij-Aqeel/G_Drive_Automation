@@ -48,21 +48,34 @@ def create_or_get_folder(service, folder_name, parent_id=None):
 def upload_files_in_folder(service, folder_path, parent_id):
     for item in os.listdir(folder_path):
         item_path = os.path.join(folder_path, item)
-        
-        if os.path.isdir(item_path):
+
+        if os.path.isdir(item_path):#Check if folder
             folder_id = create_or_get_folder(service, item, parent_id)
             upload_files_in_folder(service, item_path, folder_id)
-        else:
-            # If it's a file, upload it
-            file_check = service.files().list(q=f"name='{item}' and '{parent_id}' in parents", spaces="drive").execute()
-            if not file_check["files"]:
-                file_metadata = {
-                    'name': item,
-                    'parents': [parent_id]
-                }
-                Upload = MediaFileUpload(item_path)
+        else:# If file
+            file_metadata = {'name': item, 'parents': [parent_id]}
+            Upload = MediaFileUpload(item_path)
+            # Check if file already exists
+            file_check = service.files().list(
+                q=f"name='{item}' and '{parent_id}' in parents", spaces="drive"
+            ).execute()
+            if file_check['files']:
+                # File exists, check its size
+                file_id = file_check["files"][0].get("id")
+                file_data = service.files().get(fileId=file_id, fields="id, name, mimeType, size").execute()
+                cloud_size = int(file_data.get("size"))
+                local_size = os.path.getsize(item_path)
+
+                if cloud_size != local_size:
+                    # Replace existing file
+                    service.files().delete(fileId=file_id).execute()
+                    service.files().create(body=file_metadata, media_body=Upload, fields='id').execute()
+                    print(f"File {item} replaced with new version.")
+            else:
+                # Upload new file if it doesn't exist
                 service.files().create(body=file_metadata, media_body=Upload, fields='id').execute()
-                print(f"File {item} uploaded to Folder {folder_path.split("/")[-1]}")
+                print(f"New File {item} uploaded.")
+
 
 def Folder(service, folder):
     # Check if main folder exists on Drive
@@ -76,11 +89,12 @@ def Storage_Info(service):
     S_used=int(about["storageQuota"]["usage"])/(1024**3)
     Drive_use=int(about["storageQuota"]["usageInDrive"])/(1024**3)
     Drive_trash=int(about["storageQuota"]["usageInDriveTrash"])/(1024**3)
+    print("-"*100)
+    print("-------------Storage Information-------------")
     print(f"Storage Limit: {S_limit:.2f}GB")   
     print(f"Storage Usage: {S_used:2f}GB")   
     print(f"Storage Usage in Drive: {Drive_use:2f}")   
     print(f"Storage Usage in Trash: {Drive_trash:2f}")
-
 
 def starter_code():
     service = Basic_configuration()
