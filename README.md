@@ -1,4 +1,4 @@
-# Google Drive Backup Project
+# Google Drive Backup Automation
 
 A Python tool for automating Google Drive backups, replacing existing files if updated, listing Drive contents, and displaying storage information.
 
