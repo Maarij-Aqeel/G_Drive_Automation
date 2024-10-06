@@ -77,8 +77,8 @@ def upload_files_in_folder(service, folder_path, parent_id):
                 print(f"New File {item} uploaded.")
 
 
+# Check if main folder exists on Drive
 def Folder(service, folder):
-    # Check if main folder exists on Drive
     folder_id = create_or_get_folder(service, "Backup_2024")
     upload_files_in_folder(service, folder, folder_id)
 
@@ -89,29 +89,69 @@ def Storage_Info(service):
     S_used=int(about["storageQuota"]["usage"])/(1024**3)
     Drive_use=int(about["storageQuota"]["usageInDrive"])/(1024**3)
     Drive_trash=int(about["storageQuota"]["usageInDriveTrash"])/(1024**3)
-    print("-"*100)
     print("-------------Storage Information-------------")
     print(f"Storage Limit: {S_limit:.2f}GB")   
     print(f"Storage Usage: {S_used:2f}GB")   
     print(f"Storage Usage in Drive: {Drive_use:2f}")   
     print(f"Storage Usage in Trash: {Drive_trash:2f}")
+#Help Menu
+def help_menu():
+    print("Usage: python main.py [folder_path1 folder_path2 ...]")
+    print("       python main.py path_to_file_containing_folder_paths")
+    print("       python main.py -storage \t Show Storage Information")
+    print("       python main.py -list \t list content from Drive")
+    print("       python main.py --help (or) -h \t Show Help menu")
+
+#Get Files/Folders from Drive
+def list_content(service,folder_id='root',indent=0):
+    all_items = []
+    query = f"'{folder_id}' in parents"
+    page_token = None
+    # Retrieve all files and folders in the root directory
+    while True:
+        response = service.files().list(
+            q=query,
+            spaces='drive',
+            fields="nextPageToken, files(id, name, mimeType, parents)",
+            pageToken=page_token
+        ).execute()
+        all_items.extend(response.get('files', []))
+        page_token = response.get('nextPageToken')
+        if not page_token:
+            break
+    for item in all_items:
+        print('  ' * indent + f"-> {item['name']} (Type: {item['mimeType']})")
+        # If the item is a folder, recursively retrieve its contents
+        if item['mimeType'] == 'application/vnd.google-apps.folder':
+            list_content(service, item['id'], indent + 1)
+
 
 def starter_code():
     service = Basic_configuration()
-    if len(argv)!=1:
-        if os.path.isdir(argv[1]):#Get Folders from command line
+    if len(argv)<2:
+        print("Error Insufficient Arguments")
+        help_menu()
+        return
+
+    if argv[1]=="--help" or argv[1]=="-h":
+        help_menu()
+        return
+    elif argv[1]=="-storage":
+        Storage_Info(service)
+        return
+    elif argv[1]=="-list":
+        print("Getting Data From Drive........\n")
+        list_content(service)
+    elif os.path.isdir(argv[1]):#Get Folders from command line
             for folder in range(1,len(argv)):
                 print(f"Checking Path: {argv[folder]}\n")
                 Folder(service,argv[folder])
-        else:#File containing folder paths
+    else:#File containing folder paths
             with open(argv[1],'r') as paths:
                 for folder in paths.readlines():
                     print(f"Checking Path: {folder}\n")
                     folder=folder.strip("\n")
                     Folder(service,folder)
-    else:
-        folder=input("Enter Path of folder:")
-        Folder(service,folder)
     Storage_Info(service)
 
     
