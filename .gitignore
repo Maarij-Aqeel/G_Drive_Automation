@@ -1,9 +1,4 @@
-# Ignore credentials file
+# Ignore credentials/Token file
 credentials.json
 
-# Ignore token file
 Token.json
-
-# Ignore any other sensitive files or directories
-Token.json
-credentials.json
