@@ -38,14 +38,14 @@ def create_or_get_folder(service, folder_name, parent_id=None):
         if parent_id:
             file_metadata['parents'] = [parent_id]
         folder = service.files().create(body=file_metadata, fields="id").execute()
-        print(f"Folder {folder_name} Uploaded!")
+        print(f"New Folder {folder_name} Uploaded!")
         return folder.get("id")
     else:
         # If it exists, return its ID
         return response["files"][0]["id"]
 
 #Recursively upload files/Folders
-def upload_files_in_folder(service, folder_path, parent_id):
+def upload_files_in_folder(service, folder_path, parent_id,replace=True,changes=False):
     for item in os.listdir(folder_path):
         item_path = os.path.join(folder_path, item)
 
@@ -61,16 +61,20 @@ def upload_files_in_folder(service, folder_path, parent_id):
             ).execute()
             if file_check['files']:
                 # File exists, check its size
-                file_id = file_check["files"][0].get("id")
-                file_data = service.files().get(fileId=file_id, fields="id, name, mimeType, size").execute()
-                cloud_size = int(file_data.get("size"))
-                local_size = os.path.getsize(item_path)
+                if replace or changes:
+                    file_id = file_check["files"][0].get("id")
+                    file_data = service.files().get(fileId=file_id, fields="id, name, mimeType, size").execute()
+                    cloud_size = int(file_data.get("size"))
+                    local_size = os.path.getsize(item_path)
 
-                if cloud_size != local_size:
-                    # Replace existing file
-                    service.files().delete(fileId=file_id).execute()
-                    service.files().create(body=file_metadata, media_body=Upload, fields='id').execute()
-                    print(f"File {item} replaced with new version.")
+                    if cloud_size != local_size:
+                        if changes:
+                            print(f"Changes detected in file {item}")
+                        else:
+                            # Replace existing file
+                            service.files().delete(fileId=file_id).execute()
+                            service.files().create(body=file_metadata, media_body=Upload, fields='id').execute()
+                            print(f"File {item} replaced with new version.")
             else:
                 # Upload new file if it doesn't exist
                 service.files().create(body=file_metadata, media_body=Upload, fields='id').execute()
@@ -78,9 +82,10 @@ def upload_files_in_folder(service, folder_path, parent_id):
 
 
 # Check if main folder exists on Drive
-def Folder(service, folder):
-    folder_id = create_or_get_folder(service, "Backup_2024")
-    upload_files_in_folder(service, folder, folder_id)
+def Folder(service, folder,replace,changes):
+    folder_name=input("Enter Folder name (New or Old):")
+    folder_id = create_or_get_folder(service, folder_name)
+    upload_files_in_folder(service, folder, folder_id,replace=replace,changes=changes)
 
 # Storage Info
 def Storage_Info(service):
@@ -101,6 +106,8 @@ def help_menu():
     print("       python main.py -storage \t Show Storage Information")
     print("       python main.py -list \t list content from Drive")
     print("       python main.py --help (or) -h \t Show Help menu")
+    print("       python main.py -changes \t Detect changes in Local and Online file")
+    print("       python main.py -noreplace \t Avoid replacing Only Add new File")
 
 #Get Files/Folders from Drive
 def list_content(service,folder_id='root',indent=0):
@@ -125,35 +132,56 @@ def list_content(service,folder_id='root',indent=0):
         if item['mimeType'] == 'application/vnd.google-apps.folder':
             list_content(service, item['id'], indent + 1)
 
-
 def starter_code():
+    replace = True
+    changes=False
     service = Basic_configuration()
-    if len(argv)<2:
-        print("Error Insufficient Arguments")
+
+    if len(argv) < 2:
+        print("Error: Insufficient Arguments")
         help_menu()
         return
 
-    if argv[1]=="--help" or argv[1]=="-h":
+    # Check for command options
+    if argv[1] in ("--help", "-h"):
         help_menu()
         return
-    elif argv[1]=="-storage":
+    elif argv[1] == "-storage":
+        print("Getting Storage Data...\n")
         Storage_Info(service)
         return
-    elif argv[1]=="-list":
-        print("Getting Data From Drive........\n")
+    elif argv[1]=='-changes':
+        paths=argv[2:]
+        changes=True
+    elif argv[1] == "-list":
+        print("Getting Data From Drive...\n")
         list_content(service)
-    elif os.path.isdir(argv[1]):#Get Folders from command line
-            for folder in range(1,len(argv)):
-                print(f"Checking Path: {argv[folder]}\n")
-                Folder(service,argv[folder])
-    else:#File containing folder paths
-            with open(argv[1],'r') as paths:
-                for folder in paths.readlines():
-                    print(f"Checking Path: {folder}\n")
-                    folder=folder.strip("\n")
-                    Folder(service,folder)
-    Storage_Info(service)
+        return
+    elif argv[1] == "-noreplace":
+        replace = False
+        paths = argv[2:]
+    else:
+        paths = argv[1:]
 
-    
+    for path in paths:
+        path = path.strip()
+
+        if os.path.isfile(path):  #File containing folder paths
+            with open(path, 'r') as file:
+                folder_paths = file.readlines()
+                for folder in folder_paths:
+                    folder = folder.strip()
+                    if folder and os.path.isdir(folder):
+                        print(f"Checking Path: {folder}\n")
+                        Folder(service, folder, replace,changes)
+                    else:
+                        print(f"Error: '{folder}' is not a valid directory.")
+        elif os.path.isdir(path):  # Single directory
+            print(f"Checking Path: {path}\n")
+            Folder(service, path, replace,changes)
+        else:
+            print(f"Error: '{path}' is not a valid directory or file.")
+
+
 if __name__ == "__main__":
     starter_code()
