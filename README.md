@@ -52,6 +52,8 @@ A Python tool for automating Google Drive backups, replacing existing files if u
     --help or -h: Show the help menu.
     -storage: Display Google Drive storage information.
     -list: List all files and folders in your Google Drive.
+    -noreplace: Avoid replacing files that have different sizes.
+    -changes: Detect changes by comparing files
     [folder_path]: Backup specific folders from your system.
     [file_path]: Backup folders listed in a text file (one path per line).
 
