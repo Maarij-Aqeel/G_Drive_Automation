@@ -6,6 +6,8 @@ from sys import argv
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+import socket
+import time
 
 # Basic configuration
 def Basic_configuration():
@@ -23,6 +25,18 @@ def Basic_configuration():
             token.write(creds.to_json())
     service = build('drive', 'v3', credentials=creds)
     return service
+
+#Check Internet Connection
+def check_internet(retries=5,wait=2):
+    for _ in range(retries):
+        try:
+            socket.gethostbyname('www.googleapis.com')
+            return True
+        except socket.gaierror:
+            print("Trying to reconnect...")
+            time.sleep(wait)
+    print("Internet Not available")
+    exit(1)
 
 #Create a folder if not already else get its id
 def create_or_get_folder(service, folder_name, parent_id=None):
@@ -135,53 +149,55 @@ def list_content(service,folder_id='root',indent=0):
 def starter_code():
     replace = True
     changes=False
-    service = Basic_configuration()
+    if check_internet():
+        service = Basic_configuration()
 
-    if len(argv) < 2:
-        print("Error: Insufficient Arguments")
-        help_menu()
-        return
+        if len(argv) < 2:
+            print("Error: Insufficient Arguments")
+            help_menu()
+            return
 
-    # Check for command options
-    if argv[1] in ("--help", "-h"):
-        help_menu()
-        return
-    elif argv[1] == "-storage":
-        print("Getting Storage Data...\n")
-        Storage_Info(service)
-        return
-    elif argv[1]=='-changes':
-        paths=argv[2:]
-        changes=True
-    elif argv[1] == "-list":
-        print("Getting Data From Drive...\n")
-        list_content(service)
-        return
-    elif argv[1] == "-noreplace":
-        replace = False
-        paths = argv[2:]
-    else:
-        paths = argv[1:]
-
-    for path in paths:
-        path = path.strip()
-
-        if os.path.isfile(path):  #File containing folder paths
-            with open(path, 'r') as file:
-                folder_paths = file.readlines()
-                for folder in folder_paths:
-                    folder = folder.strip()
-                    if folder and os.path.isdir(folder):
-                        print(f"Checking Path: {folder}\n")
-                        Folder(service, folder, replace,changes)
-                    else:
-                        print(f"Error: '{folder}' is not a valid directory.")
-        elif os.path.isdir(path):  # Single directory
-            print(f"Checking Path: {path}\n")
-            Folder(service, path, replace,changes)
+        # Check for command options
+        if argv[1] in ("--help", "-h"):
+            help_menu()
+            return
+        elif argv[1] == "-storage":
+            print("Getting Storage Data...\n")
+            Storage_Info(service)
+            return
+        elif argv[1]=='-changes':
+            paths=argv[2:]
+            changes=True
+        elif argv[1] == "-list":
+            print("Getting Data From Drive...\n")
+            list_content(service)
+            return
+        elif argv[1] == "-noreplace":
+            replace = False
+            paths = argv[2:]
         else:
-            print(f"Error: '{path}' is not a valid directory or file.")
+            paths = argv[1:]
 
+        for path in paths:
+            path = path.strip()
+
+            if os.path.isfile(path):  #File containing folder paths
+                with open(path, 'r') as file:
+                    folder_paths = file.readlines()
+                    for folder in folder_paths:
+                        folder = folder.strip()
+                        if folder and os.path.isdir(folder):
+                            print(f"Checking Path: {folder}\n")
+                            Folder(service, folder, replace,changes)
+                        else:
+                            print(f"Error: '{folder}' is not a valid directory.")
+            elif os.path.isdir(path):  # Single directory
+                print(f"Checking Path: {path}\n")
+                Folder(service, path, replace,changes)
+            else:
+                print(f"Error: '{path}' is not a valid directory or file.")
+    else:
+        return
 
 if __name__ == "__main__":
     starter_code()
