@@ -9,7 +9,6 @@ from googleapiclient.http import MediaFileUpload
 import socket
 import time
 
-
 # Basic configuration
 def Basic_configuration():
     Scopes = ["https://www.googleapis.com/auth/drive"]
@@ -38,7 +37,7 @@ def check_internet(retries=5, wait=3):
     print("Internet Not available")
     exit(1)
 
-# Create a folder if not already else get its id
+#Create a folder if not already else get its id
 def create_or_get_folder(service, folder_name, parent_id=None):
     query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder'"
     if parent_id:
@@ -58,7 +57,7 @@ def create_or_get_folder(service, folder_name, parent_id=None):
         # If it exists, return its ID
         return response["files"][0]["id"]
 
-# Recursively upload files/Folders
+#Recursively upload files/Folders
 def upload_files_in_folder(service, folder_path, parent_id,excluded,replace=True, changes=False):
     for item in os.listdir(folder_path):
         item_path = os.path.join(folder_path, item)
@@ -98,10 +97,10 @@ def upload_files_in_folder(service, folder_path, parent_id,excluded,replace=True
 
 
 # Check if main folder exists on Drive
-def Folder(service, folder,replace,changes):
+def Folder(service, folder,replace,changes,excluded):
     folder_name=input("Enter Folder name (New or Old):")
     folder_id = create_or_get_folder(service, folder_name)
-    upload_files_in_folder(service, folder, folder_id,replace=replace,changes=changes)
+    upload_files_in_folder(service, folder, folder_id,excluded,replace=replace,changes=changes)
 
 # Storage Info
 def Storage_Info(service):
