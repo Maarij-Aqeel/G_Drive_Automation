@@ -54,6 +54,7 @@ A Python tool for automating Google Drive backups, replacing existing files if u
     -list: List all files and folders in your Google Drive.
     -noreplace: Avoid replacing files that have different sizes.
     -changes: Detect changes by comparing files
+    -delete: Delete File/Folder.
     [folder_path]: Backup specific folders from your system.
     [file_path]: Backup folders listed in a text file (one path per line).
 
@@ -79,8 +80,14 @@ A Python tool for automating Google Drive backups, replacing existing files if u
    ```python
   python main.py -storage
  ```
+  __Delete File or Folder:__
 
-__List Drive Contents:__
+
+   ```python
+  python main.py -delete Path/to/File/Folder
+ ```
+
+  __List Drive Contents:__
 
 
 
