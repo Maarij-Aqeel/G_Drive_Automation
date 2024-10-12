@@ -95,12 +95,43 @@ def upload_files_in_folder(service, folder_path, parent_id,excluded,replace=True
                 service.files().create(body=file_metadata, media_body=Upload, fields='id').execute()
                 print(f"New File {item} uploaded.")
 
+# Deleting Data
+def delete_data(service, path):
+    lst_items = path.split("/")
+    parent_id = "root"
+    print("Traversing Path:")
+
+    for item in lst_items[:-1]:  # Traverse through folders
+        query = f"'{parent_id}' in parents and name='{item}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        check = service.files().list(q=query, spaces="drive", fields="files(id, name)").execute()
+        folders = check.get('files', [])
+        if not folders:
+            print(f"Folder '{item}' not found in the path.")
+            return
+        parent_id = folders[0]['id']#Moving to Next folder
+
+    # File/Folder to be deleted
+    file_name = lst_items[-1]
+    query = f"'{parent_id}' in parents and name='{file_name}' and trashed=false"
+    result = service.files().list(q=query, spaces="drive", fields="files(id,mimeType, name)").execute()
+    files = result.get('files', [])
+    if not files:
+        print(f"File/Folder '{file_name}' not found.")
+        return
+    if files[0]["mimeType"]=="application/vnd.google-apps.folder":#Delete the Folder
+        file_id=files[0]["id"]
+        service.files().delete(fileId=file_id).execute()
+        print(f"Folder '{file_name}' deleted successfully!")
+        return
+    # Delete the File
+    file_id = files[0]['id']
+    service.files().delete(fileId=file_id).execute()
+    print(f"File '{file_name}' deleted successfully!")
 
 # Check if main folder exists on Drive
-def Folder(service, folder,replace,changes,excluded):
-    folder_name=input("Enter Folder name (New or Old):")
-    folder_id = create_or_get_folder(service, folder_name)
-    upload_files_in_folder(service, folder, folder_id,excluded,replace=replace,changes=changes)
+def Folder(service, folder, replace, changes,excluded):
+    folder_id = create_or_get_folder(service, "Backup_2024")
+    upload_files_in_folder(service, folder, folder_id,excluded,replace=replace, changes=changes)
 
 # Storage Info
 def Storage_Info(service):
@@ -178,6 +209,10 @@ def starter_code():
             else:
                 excluded=argv[2].split(",")
             paths=argv[3:]
+        elif argv[1]=='-delete':
+            path=argv[2]
+            delete_data(service,path)
+            return
         elif argv[1] == "-list":
             print("Getting Data From Drive...\n")
             list_content(service)
